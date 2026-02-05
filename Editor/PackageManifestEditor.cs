@@ -9,7 +9,7 @@ namespace UnityEssentials
 {
     public partial class PackageManifest
     {
-        public EditorWindowDrawer Window;
+        public EditorWindowBuilder Window;
         public Action Repaint;
         public Action Close;
 
@@ -26,7 +26,7 @@ namespace UnityEssentials
         {
             string path = AssetDatabase.GetAssetPath(Selection.activeObject);
             var editor = new PackageManifest(path);
-            var window = EditorWindowDrawer
+            var window = EditorWindowBuilder
                 .CreateInstance("Edit Package Manifest", new(400, 500), new(700, 800))
                 .SetInitialization(editor.Initialization)
                 .SetHeader(editor.Header, EditorWindowStyle.HelpBox)
