@@ -12,16 +12,16 @@ namespace UnityEssentials
     /// Shared helpers for reading/writing and normalizing Unity package.json data.
     /// Keep this editor-only to avoid pulling Newtonsoft into runtime builds.
     /// </summary>
-    internal static class PackageManifestUtilities
+    public static class PackageManifestUtilities
     {
-        internal static PackageManifestData DeserializeOrNew(string json, out string error)
+        public static PackageManifestData DeserializeOrNew(string json, out string error)
         {
             var data = TryDeserialize(json, out error) ?? new PackageManifestData();
             EnsureDefaults(data);
             return data;
         }
 
-        internal static PackageManifestData TryDeserialize(string json, out string error)
+        public static PackageManifestData TryDeserialize(string json, out string error)
         {
             error = null;
             try
@@ -38,7 +38,7 @@ namespace UnityEssentials
             }
         }
 
-        internal static string SafeReadFile(string path, string fallback)
+        public static string SafeReadFile(string path, string fallback)
         {
             try
             {
@@ -52,7 +52,7 @@ namespace UnityEssentials
             }
         }
 
-        internal static void EnsureDefaults(PackageManifestData data)
+        public static void EnsureDefaults(PackageManifestData data)
         {
             if (data == null) return;
             data.dependencies ??= new Dictionary<string, string>();
@@ -61,14 +61,14 @@ namespace UnityEssentials
             data.author ??= new PackageManifestData.Author();
         }
 
-        internal static void NormalizeForSave(PackageManifestData data)
+        public static void NormalizeForSave(PackageManifestData data)
         {
             EnsureDefaults(data);
             NormalizeDependencies(data);
             NormalizeKeywords(data);
         }
 
-        internal static void NormalizeDependencies(PackageManifestData data)
+        public static void NormalizeDependencies(PackageManifestData data)
         {
             data.dependencies ??= new Dictionary<string, string>();
 
@@ -81,7 +81,7 @@ namespace UnityEssentials
                 data.dependencies.Remove(k);
         }
 
-        internal static void NormalizeKeywords(PackageManifestData data)
+        public static void NormalizeKeywords(PackageManifestData data)
         {
             data.keywords ??= new List<string>();
             // Trim entries and remove empties
@@ -93,7 +93,7 @@ namespace UnityEssentials
             }
         }
 
-        internal static void ParsePackageName(string fullName, out string organizationName, out string packageName)
+        public static void ParsePackageName(string fullName, out string organizationName, out string packageName)
         {
             organizationName = string.Empty;
             packageName = string.Empty;
@@ -109,23 +109,20 @@ namespace UnityEssentials
             }
         }
 
-        internal static string ComposePackageName(string organizationName, string packageName)
-        {
-            organizationName = SanitizeNamePart(organizationName);
-            packageName = SanitizeNamePart(packageName);
-            return $"com.{organizationName}.{packageName}";
-        }
+        public static string ComposePackageName(string organizationName, string packageName) =>
+            $"com.{SanitizeNamePart(organizationName)}.{SanitizeNamePart(packageName)}";
 
-        internal static string SanitizeNamePart(string input)
+        public static string SanitizeNamePart(string input, bool regex = false)
         {
             if (string.IsNullOrEmpty(input))
                 return "";
             input = input.ToLowerInvariant().Replace(" ", "-");
-            input = Regex.Replace(input, @"[^a-z0-9\-]", "");
+            if (regex)
+                input = Regex.Replace(input, @"[^a-z0-9\-]", "");
             return input;
         }
 
-        internal static void CopyInto(PackageManifestData src, PackageManifestData dst)
+        public static void CopyInto(PackageManifestData src, PackageManifestData dst)
         {
             if (src == null || dst == null) return;
 
@@ -148,7 +145,7 @@ namespace UnityEssentials
             dst.hideInEditor = src.hideInEditor;
         }
 
-        internal static void SyncListsIntoData(
+        public static void SyncListsIntoData(
             PackageManifestData data,
             List<PackageManifestData.Dependency> dependencies,
             List<string> keywords,
@@ -182,7 +179,7 @@ namespace UnityEssentials
             NormalizeForSave(data);
         }
 
-        internal static bool SaveToFile(
+        public static bool SaveToFile(
             string jsonPath,
             PackageManifestData data,
             List<PackageManifestData.Dependency> dependencies,

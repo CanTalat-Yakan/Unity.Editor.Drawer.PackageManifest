@@ -11,15 +11,11 @@ namespace UnityEssentials
 {
     public class PackageManifestRenderer
     {
-        public static CustomReorderableListUIToolkitPlain Dependencies;
-        public static CustomReorderableListUIToolkitPlain Keywords;
-        public static CustomReorderableListUIToolkitPlain Samples;
-
         public static VisualElement RenderFunction(string content, string assetPath)
         {
             if (!Path.GetFileName(assetPath).Equals("package.json", StringComparison.InvariantCultureIgnoreCase))
                 return null;
-            
+
             var data = PackageManifestUtilities.DeserializeOrNew(content, out var error);
 
             var dependencies = new List<PackageManifestData.Dependency>();
@@ -48,7 +44,7 @@ namespace UnityEssentials
             scroll.SetFlex(grow: 1);
             scroll.SetScrollbarVisibility(horizontal: ScrollerVisibility.Hidden);
             scroll.SetMinWidth(0);
-            scroll.contentContainer.SetPadding(0, 3, 0,0);
+            scroll.contentContainer.SetPadding(0, 3, 0, 0);
             root.Add(scroll);
 
             var footer = new VisualElement();
@@ -72,7 +68,7 @@ namespace UnityEssentials
                 return l;
             }
 
-            VisualElement Space(float px) => 
+            VisualElement Space(float px) =>
                 new() { style = { height = px } };
 
             TextField TextField(string label, string value, Action<string> onChanged = null)
@@ -97,7 +93,7 @@ namespace UnityEssentials
                 tf.labelElement.SetMinWidth(160);
                 return tf;
             }
-            
+
             // --- Information ---
             scroll.Add(SectionTitle("Information"));
 
@@ -129,7 +125,7 @@ namespace UnityEssentials
             scroll.Add(unityReleaseField);
 
             scroll.Add(Space(10));
-            
+
             scroll.Add(SectionTitle("Description"));
 
             var descriptionField = TextArea("", data.description, minHeight: 90);
@@ -137,20 +133,20 @@ namespace UnityEssentials
             scroll.Add(descriptionField);
 
             scroll.Add(Space(10));
-            
+
             // --- Dependencies ---
-            Dependencies ??= PackageManifestReorderableLists.CreateDependenciesUitk(dependencies);
-            scroll.Add(Dependencies.DoLayoutList());
+            var dependenciesList = PackageManifestReorderableLists.CreateDependenciesUitk(dependencies);
+            scroll.Add(dependenciesList.DoLayoutList());
 
             // --- Keywords ---
             scroll.Add(Space(10));
-            Keywords ??= PackageManifestReorderableLists.CreateKeywordsUitk(keywords);
-            scroll.Add(Keywords.DoLayoutList());
+            var keywordsList = PackageManifestReorderableLists.CreateKeywordsUitk(keywords);
+            scroll.Add(keywordsList.DoLayoutList());
 
             // --- Samples ---
             scroll.Add(Space(10));
-            Samples ??= PackageManifestReorderableLists.CreateSamplesUitk(samples);
-            scroll.Add(Samples.DoLayoutList());
+            var samplesList = PackageManifestReorderableLists.CreateSamplesUitk(samples);
+            scroll.Add(samplesList.DoLayoutList());
 
             // --- Foldouts ---
             scroll.Add(Space(10));
@@ -215,10 +211,15 @@ namespace UnityEssentials
             {
                 try
                 {
-                    var sanitizedOrg = PackageManifestUtilities.SanitizeNamePart(orgField.value);
-                    var sanitizedName = PackageManifestUtilities.SanitizeNamePart(nameField.value);
+                    // Make sure delayed text fields flush their edits before reading values.
+                    // (List items use isDelayed=true.)
+                    // UI Toolkit doesn't expose a generic Panel.Focus(), so we shift focus to a dummy element.
+                    var focusSink = new VisualElement { focusable = true };
+                    host.Add(focusSink);
+                    focusSink.Focus();
+                    host.Remove(focusSink);
 
-                    data.name = PackageManifestUtilities.ComposePackageName(sanitizedOrg, sanitizedName);
+                    data.name = PackageManifestUtilities.ComposePackageName(orgField.value, nameField.value);
                     data.displayName = displayNameField.value;
                     data.version = versionField.value;
 
