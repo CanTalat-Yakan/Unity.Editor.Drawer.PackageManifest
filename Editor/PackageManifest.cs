@@ -18,7 +18,7 @@ namespace UnityEssentials
             return Path.GetFileName(path) == checkPath;
         }
 
-        [MenuItem("Assets/Edit Package Manifest", false, -79)]
+        [MenuItem("Assets/Edit Package Manifest", false, 1100)]
         private static void ShowWindow()
         {
             string path = AssetDatabase.GetAssetPath(Selection.activeObject);
