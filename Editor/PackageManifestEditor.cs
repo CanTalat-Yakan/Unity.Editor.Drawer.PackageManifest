@@ -1,66 +1,86 @@
 #if UNITY_EDITOR
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
-using Newtonsoft.Json;
 
 namespace UnityEssentials
 {
-    public partial class PackageManifest
+    public class PackageManifestEditor
     {
+        private string _jsonPath;
+        private PackageManifestData _jsonData;
+
+        private readonly List<PackageManifestData.Dependency> _dependencies = new();
+        private readonly List<string> _keywords = new();
+        private readonly List<PackageManifestData.Sample> _samples = new();
+        
+        private ReorderableList _dependenciesList;
+        private ReorderableList _keywordsList;
+        private ReorderableList _samplesList;
+
+        private bool _authorFoldout = true;
+        private bool _linksFoldout = true;
+        private bool _advancedFoldout;
+        private bool _initialized;
+        
         public EditorWindowBuilder Window;
         public Action Repaint;
         public Action Close;
 
-        [MenuItem("Assets/Edit Package Manifest", true)]
-        private static bool ValidateOpenPackageEditor()
-        {
-            const string checkPath = "package.json";
-            var path = AssetDatabase.GetAssetPath(Selection.activeObject);
-            return Path.GetFileName(path) == checkPath;
-        }
+        public PackageManifestEditor(string path) =>
+            _jsonPath = path;
 
-        [MenuItem("Assets/Edit Package Manifest", false, -79)]
-        private static void ShowWindow()
-        {
-            string path = AssetDatabase.GetAssetPath(Selection.activeObject);
-            var editor = new PackageManifest(path);
-            var window = EditorWindowBuilder
-                .CreateInstance("Edit Package Manifest", new(400, 500), new(700, 800))
-                .SetInitialization(editor.Initialization)
-                .SetHeader(editor.Header, EditorWindowStyle.HelpBox)
-                .SetBody(editor.Body, EditorWindowStyle.BigMargin)
-                .SetFooter(editor.Footer, EditorWindowStyle.HelpBox)
-                .GetRepaintEvent(out editor.Repaint)
-                .GetCloseEvent(out editor.Close)
-                .ShowAsUtility();
-        }
-
-        private void Initialization()
+        public void Initialization()
         {
             if (!string.IsNullOrEmpty(_jsonPath) && File.Exists(_jsonPath))
             {
                 string json = File.ReadAllText(_jsonPath);
-                _jsonData = JsonConvert.DeserializeObject<PackageManifestData>(json) ?? new PackageManifestData();
+                _jsonData = PackageManifestUtilities.DeserializeOrNew(json, out _);
 
-                _jsonData.dependencies ??= new();
-                InitializeDependenciesList();
+                // Shared lists
+                _dependencies.Clear();
+                foreach (var kvp in _jsonData.dependencies)
+                    _dependencies.Add(new PackageManifestData.Dependency { name = kvp.Key, version = kvp.Value });
 
-                _jsonData.keywords ??= new();
-                InitializeKeywordsList();
+                _keywords.Clear();
+                _keywords.AddRange(_jsonData.keywords);
 
-                _jsonData.samples ??= new();
-                InitializeSamplesList();
+                _samples.Clear();
+                _samples.AddRange(_jsonData.samples);
+
+                _dependenciesList = PackageManifestReorderableLists.CreateDependenciesIMGUI(
+                    _dependencies,
+                    i => _dependencies[i],
+                    onAdd: () => _dependencies.Add(new PackageManifestData.Dependency
+                    {
+                        name = "com.example.new-package",
+                        version = "1.0.0"
+                    }));
+
+                _keywordsList = PackageManifestReorderableLists.CreateKeywordsIMGUI(
+                    _keywords,
+                    onAdd: () => _keywords.Add(string.Empty));
+
+                _samplesList = PackageManifestReorderableLists.CreateSamplesIMGUI(
+                    _samples,
+                    onAdd: () => _samples.Add(new PackageManifestData.Sample
+                    {
+                        displayName = string.Empty,
+                        description = string.Empty,
+                        path = "Samples~/"
+                    }));
             }
             else _jsonData = new();
 
-            _initialized = true; 
+            _initialized = true;
 
             GUI.FocusControl(null);
         }
 
-        private void Header()
+        public void Header()
         {
             if (!_initialized)
             {
@@ -79,16 +99,16 @@ namespace UnityEssentials
 
             EditorGUI.indentLevel++;
             {
-                ParsePackageName(_jsonData.name, out string organizationName, out string packageName);
+                PackageManifestUtilities.ParsePackageName(_jsonData.name, out string organizationName, out string packageName);
 
                 packageName = EditorGUILayout.TextField("Name", packageName);
-                packageName = SanitizeNamePart(packageName);
+                packageName = PackageManifestUtilities.SanitizeNamePart(packageName);
 
                 organizationName = EditorGUILayout.TextField("Organization name", organizationName);
-                organizationName = SanitizeNamePart(organizationName);
+                organizationName = PackageManifestUtilities.SanitizeNamePart(organizationName);
 
                 _jsonData.displayName = EditorGUILayout.TextField("Display Name", _jsonData.displayName);
-                _jsonData.name = ComposePackageName(organizationName, packageName);
+                _jsonData.name = PackageManifestUtilities.ComposePackageName(organizationName, packageName);
                 _jsonData.version = EditorGUILayout.TextField("Version", _jsonData.version);
 
                 EditorGUILayout.Space();
@@ -115,24 +135,37 @@ namespace UnityEssentials
             _jsonData.description = EditorGUILayout.TextArea(_jsonData.description, wordWrapStyle, GUILayout.MinHeight(80));
         }
 
-        private void Body()
+        public void Body()
         {
             EditorGUILayout.Space(10);
 
-            if (_dependenciesList == null)
-                InitializeDependenciesList();
+            _dependenciesList ??= PackageManifestReorderableLists.CreateDependenciesIMGUI(
+                _dependencies,
+                i => _dependencies[i],
+                onAdd: () => _dependencies.Add(new PackageManifestData.Dependency
+                {
+                    name = "com.example.new-package",
+                    version = "1.0.0"
+                }));
             _dependenciesList.DoLayoutList();
 
             EditorGUILayout.Space();
 
-            if (_keywordsList == null)
-                InitializeKeywordsList();
+            _keywordsList ??= PackageManifestReorderableLists.CreateKeywordsIMGUI(
+                _keywords,
+                onAdd: () => _keywords.Add(string.Empty));
             _keywordsList.DoLayoutList();
 
             EditorGUILayout.Space();
 
-            if (_samplesList == null)
-                InitializeSamplesList();
+            _samplesList ??= PackageManifestReorderableLists.CreateSamplesIMGUI(
+                _samples,
+                onAdd: () => _samples.Add(new PackageManifestData.Sample
+                {
+                    displayName = string.Empty,
+                    description = string.Empty,
+                    path = "Samples~/"
+                }));
             _samplesList.DoLayoutList();
 
             EditorGUILayout.Space(10);
@@ -175,7 +208,7 @@ namespace UnityEssentials
             }
         }
 
-        private void Footer()
+        public void Footer()
         {
             using (new GUILayout.HorizontalScope())
             {
@@ -190,7 +223,11 @@ namespace UnityEssentials
                 if (GUILayout.Button("Revert", GUILayout.Width(100)))
                     Initialization();
                 if (GUILayout.Button("Apply", GUILayout.Width(100)))
-                    Save();
+                {
+                    if (PackageManifestUtilities.SaveToFile(_jsonPath, _jsonData, _dependencies, _keywords, _samples, out _))
+                        AssetDatabase.Refresh();
+                    Close();
+                }
             }
         }
     }

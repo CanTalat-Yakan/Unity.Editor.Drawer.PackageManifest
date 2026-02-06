@@ -1,7 +1,7 @@
 {
   "name": "com.unityessentials.packagemanifesteditor",
   "version": "1.0.0",
-  "displayName": "Unity Dependencies PackageManifestEditor",
+  "displayName": "Unity Editor Drawer PackageManifestEditor",
   "description": "This is a part of the UnityEssentials Ecosystem",
   "unity": "6000.0",
   "unityRelease": "",
