@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
@@ -16,6 +17,9 @@ namespace UnityEssentials
 
         public static VisualElement RenderFunction(string content, string assetPath)
         {
+            if (!Path.GetFileName(assetPath).Equals("package.json", StringComparison.InvariantCultureIgnoreCase))
+                return null;
+            
             var data = PackageManifestUtilities.DeserializeOrNew(content, out var error);
 
             var dependencies = new List<PackageManifestData.Dependency>();
