@@ -118,7 +118,8 @@ namespace UnityEssentials
                 {
                     var row = new VisualElement();
                     row.SetFlex(direction: FlexDirection.Row, alignItems: Align.Center, alignContent: Align.Center);
-                    row.SetMargin(3,-8,2,2);
+                    row.SetPadding(20,0, 0,0);
+                    row.SetMargin(3,8,2,2);
 
                     var nameField = new TextField { isDelayed = true };
                     var versionField = new TextField { isDelayed = true };
@@ -185,7 +186,9 @@ namespace UnityEssentials
                 {
                     var tf = new TextField { isDelayed = true };
                     tf.SetFlex(direction: FlexDirection.Row, alignItems: Align.Center, alignContent: Align.Center);
+                    tf.SetPadding(20,0,0,0);
                     tf.SetMargin(2,3,2,2);
+                    tf.SetHeight(20);
                     return tf;
                 },
                 bindItem: (e, index) =>
@@ -214,14 +217,18 @@ namespace UnityEssentials
                 makeItem: () =>
                 {
                     var box = new VisualElement();
-                    box.SetFlex(direction: FlexDirection.Column);
-                    box.SetPadding(4);
-                    box.SetMargin(0, 1, 0, 0);
+                    box.SetFlex(direction: FlexDirection.Column, alignContent: Align.Center);
+                    box.SetPadding(4 + 20, 4, 4, 4);
+                    box.SetHeight(64);
 
                     var display = new TextField("Display Name") { isDelayed = true };
                     var desc = new TextField("Description") { isDelayed = true };
                     var path = new TextField("Path") { isDelayed = true };
 
+                    display.SetMargin(0,0,3,0);
+                    desc.SetMargin(0,0,2,0);
+                    path.SetMargin(0,0,2,0);
+                    
                     display.labelElement.SetMinWidth(160);
                     desc.labelElement.SetMinWidth(160);
                     path.labelElement.SetMinWidth(160);
