@@ -135,8 +135,52 @@ namespace UnityEssentials
             scroll.Add(Space(10));
 
             // --- Dependencies ---
+
+            var depsToolbar = new VisualElement();
+            depsToolbar.SetFlex(direction: FlexDirection.Row, alignItems: Align.Center);
+            depsToolbar.SetMargin(0, 0, 4, 0);
+
+            var fetchDepsBtn = new Button { text = "Fetch from asmdef" };
+            fetchDepsBtn.style.width = 140;
+
+            var depsSpacer = new VisualElement();
+            depsSpacer.SetFlex(grow: 1);
+
+            depsToolbar.Add(depsSpacer);
+            depsToolbar.Add(fetchDepsBtn);
+            scroll.Add(depsToolbar);
+
             var dependenciesList = PackageManifestReorderableLists.CreateDependenciesUitk(dependencies);
-            scroll.Add(dependenciesList.DoLayoutList());
+            var dependenciesListRoot = dependenciesList.DoLayoutList();
+            scroll.Add(dependenciesListRoot);
+
+            fetchDepsBtn.clicked += () =>
+            {
+                try
+                {
+                    var result = PackageManifestAsmdefDependencyFetcher.FetchFromPackageRoot(assetPath, includeUnityPackages: true);
+
+                    dependencies.Clear();
+                    foreach (var d in result.Dependencies)
+                    {
+                        if (d == null || string.IsNullOrWhiteSpace(d.name))
+                            continue;
+                        dependencies.Add(new PackageManifestData.Dependency { name = d.name, version = d.version ?? string.Empty });
+                    }
+
+                    dependencies.Sort((a, b) => string.Compare(a?.name, b?.name, StringComparison.OrdinalIgnoreCase));
+
+                    // Force the dependencies list UI to rebuild to reflect changes.
+                    dependenciesListRoot.RemoveFromHierarchy();
+                    dependenciesList = PackageManifestReorderableLists.CreateDependenciesUitk(dependencies);
+                    dependenciesListRoot = dependenciesList.DoLayoutList();
+                    scroll.Insert(scroll.IndexOf(depsToolbar) + 1, dependenciesListRoot);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogException(ex);
+                }
+            };
 
             // --- Keywords ---
             scroll.Add(Space(10));

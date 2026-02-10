@@ -119,7 +119,7 @@ namespace UnityEssentials
                     var row = new VisualElement();
                     row.SetFlex(direction: FlexDirection.Row, alignItems: Align.Center, alignContent: Align.Center);
                     row.SetPadding(20,0, 0,0);
-                    row.SetMargin(3,8,2,2);
+                    row.SetMargin(3,12,2,2);
 
                     var nameField = new TextField { isDelayed = true };
                     var versionField = new TextField { isDelayed = true };
