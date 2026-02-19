@@ -143,10 +143,70 @@ namespace UnityEssentials
             var fetchDepsBtn = new Button { text = "Fetch from asmdef" };
             fetchDepsBtn.style.width = 140;
 
+            // Versioning options for fetched dependencies
+            // Default: ignore patch (use ~)
+            var ignorePatch = true;
+            var ignoreMinorAndPatch = false;
+
+            string ApplyVersionRange(string version)
+            {
+                if (string.IsNullOrWhiteSpace(version))
+                    return string.Empty;
+
+                if (ignoreMinorAndPatch)
+                    return "^" + version.Split('.')[0] + ".0.0";
+
+                if (ignorePatch)
+                    return "~" + version.Split('.').Take(2).Aggregate((a, b) => a + "." + b) + ".0";
+
+                return version;
+            }
+
+            void ShowDependencyVersioningMenu()
+            {
+                var menu = new GenericMenu();
+
+                menu.AddItem(
+                    new GUIContent("Ignore patch"),
+                    ignorePatch,
+                    () =>
+                    {
+                        ignorePatch = true;
+                        ignoreMinorAndPatch = false;
+                    });
+
+                menu.AddItem(
+                    new GUIContent("Ignore minor.patch"),
+                    ignoreMinorAndPatch,
+                    () =>
+                    {
+                        ignorePatch = false;
+                        ignoreMinorAndPatch = true;
+                    });
+
+                menu.AddSeparator(string.Empty);
+
+                menu.AddItem(
+                    new GUIContent("Exact (no prefix)"),
+                    !ignorePatch && !ignoreMinorAndPatch,
+                    () =>
+                    {
+                        ignorePatch = false;
+                        ignoreMinorAndPatch = false;
+                    });
+
+                menu.ShowAsContext();
+            }
+
+            var versioningBtn = new Button(ShowDependencyVersioningMenu) { text = "Versioning" };
+            versioningBtn.tooltip = "Choose how fetched dependency versions are written (default: ~x.y.z).";
+            versioningBtn.style.width = 95;
+
             var depsSpacer = new VisualElement();
             depsSpacer.SetFlex(grow: 1);
 
             depsToolbar.Add(depsSpacer);
+            depsToolbar.Add(versioningBtn);
             depsToolbar.Add(fetchDepsBtn);
             scroll.Add(depsToolbar);
 
@@ -165,7 +225,12 @@ namespace UnityEssentials
                     {
                         if (d == null || string.IsNullOrWhiteSpace(d.name))
                             continue;
-                        dependencies.Add(new PackageManifestData.Dependency { name = d.name, version = d.version ?? string.Empty });
+
+                        dependencies.Add(new PackageManifestData.Dependency
+                        {
+                            name = d.name,
+                            version = ApplyVersionRange(d.version)
+                        });
                     }
 
                     dependencies.Sort((a, b) => string.Compare(a?.name, b?.name, StringComparison.OrdinalIgnoreCase));
@@ -311,3 +376,4 @@ namespace UnityEssentials
     }
 }
 #endif
+
