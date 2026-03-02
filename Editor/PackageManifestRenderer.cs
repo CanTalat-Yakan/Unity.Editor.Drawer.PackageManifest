@@ -143,23 +143,66 @@ namespace UnityEssentials
             var fetchDepsBtn = new Button { text = "Fetch from asmdef" };
             fetchDepsBtn.style.width = 140;
 
-            // Versioning options for fetched dependencies
-            // Default: ignore patch (use ~)
+            // Unity Package Manager does not support npm-style semver ranges (^ / ~) inside package.json dependencies.
+            // We still allow a "range-like" workflow by normalizing versions (zeroing ignored parts), and persist the
+            // intended resolver behavior via `resolutionStrategy`.
+            // Default: highestPatch
+            var resolutionStrategy = string.IsNullOrWhiteSpace(data.resolutionStrategy) ? "highestPatch" : data.resolutionStrategy;
+            data.resolutionStrategy = resolutionStrategy;
+
+            // Default: ignore patch
             var ignorePatch = true;
             var ignoreMinorAndPatch = false;
 
-            string ApplyVersionRange(string version)
+            static bool TryParseSemVer(string version, out int major, out int minor, out int patch, out string suffix)
+            {
+                major = minor = patch = 0;
+                suffix = string.Empty;
+
+                if (string.IsNullOrWhiteSpace(version))
+                    return false;
+
+                var trimmed = version.Trim();
+                var cut = trimmed.IndexOfAny(new[] { '-', '+' });
+                var core = cut >= 0 ? trimmed.Substring(0, cut) : trimmed;
+                suffix = cut >= 0 ? trimmed.Substring(cut) : string.Empty;
+
+                var parts = core.Split('.');
+                if (parts.Length < 1) return false;
+
+                if (!int.TryParse(parts.ElementAtOrDefault(0), out major)) return false;
+                int.TryParse(parts.ElementAtOrDefault(1), out minor);
+                int.TryParse(parts.ElementAtOrDefault(2), out patch);
+                return true;
+            }
+
+            string NormalizeVersion(string version)
             {
                 if (string.IsNullOrWhiteSpace(version))
                     return string.Empty;
 
+                if (!TryParseSemVer(version, out var major, out var minor, out var patch, out var suffix))
+                    return version.Trim();
+
                 if (ignoreMinorAndPatch)
-                    return "^" + version.Split('.')[0] + ".0.0";
+                {
+                    minor = 0;
+                    patch = 0;
+                }
+                else if (ignorePatch)
+                {
+                    patch = 0;
+                }
 
-                if (ignorePatch)
-                    return "~" + version.Split('.').Take(2).Aggregate((a, b) => a + "." + b) + ".0";
+                return $"{major}.{minor}.{patch}{suffix}";
+            }
 
-                return version;
+            void SetMode(bool newIgnorePatch, bool newIgnoreMinorAndPatch, string newResolutionStrategy)
+            {
+                ignorePatch = newIgnorePatch;
+                ignoreMinorAndPatch = newIgnoreMinorAndPatch;
+                resolutionStrategy = newResolutionStrategy;
+                data.resolutionStrategy = newResolutionStrategy;
             }
 
             void ShowDependencyVersioningMenu()
@@ -167,39 +210,27 @@ namespace UnityEssentials
                 var menu = new GenericMenu();
 
                 menu.AddItem(
-                    new GUIContent("Ignore patch"),
-                    ignorePatch,
-                    () =>
-                    {
-                        ignorePatch = true;
-                        ignoreMinorAndPatch = false;
-                    });
+                    new GUIContent("Ignore patch (x.y.0)"),
+                    ignorePatch && !ignoreMinorAndPatch,
+                    () => SetMode(newIgnorePatch: true, newIgnoreMinorAndPatch: false, newResolutionStrategy: "highestPatch"));
 
                 menu.AddItem(
-                    new GUIContent("Ignore minor.patch"),
+                    new GUIContent("Ignore minor.patch (x.0.0)"),
                     ignoreMinorAndPatch,
-                    () =>
-                    {
-                        ignorePatch = false;
-                        ignoreMinorAndPatch = true;
-                    });
+                    () => SetMode(newIgnorePatch: false, newIgnoreMinorAndPatch: true, newResolutionStrategy: "highestMinor"));
 
                 menu.AddSeparator(string.Empty);
 
                 menu.AddItem(
-                    new GUIContent("Exact (no prefix)"),
+                    new GUIContent("Exact"),
                     !ignorePatch && !ignoreMinorAndPatch,
-                    () =>
-                    {
-                        ignorePatch = false;
-                        ignoreMinorAndPatch = false;
-                    });
+                    () => SetMode(newIgnorePatch: false, newIgnoreMinorAndPatch: false, newResolutionStrategy: "lowest"));
 
                 menu.ShowAsContext();
             }
 
             var versioningBtn = new Button(ShowDependencyVersioningMenu) { text = "Versioning" };
-            versioningBtn.tooltip = "Choose how fetched dependency versions are written (default: ~x.y.z).";
+            versioningBtn.tooltip = "Choose how fetched dependency versions are normalized (no ^/~) and set `resolutionStrategy`.";
             versioningBtn.style.width = 95;
 
             var depsSpacer = new VisualElement();
@@ -221,6 +252,10 @@ namespace UnityEssentials
                     var result = PackageManifestAsmdefDependencyFetcher.FetchFromPackageRoot(assetPath, includeUnityPackages: true);
 
                     dependencies.Clear();
+
+                    // Persist chosen strategy so saving the file writes it.
+                    data.resolutionStrategy = resolutionStrategy;
+
                     foreach (var d in result.Dependencies)
                     {
                         if (d == null || string.IsNullOrWhiteSpace(d.name))
@@ -229,7 +264,8 @@ namespace UnityEssentials
                         dependencies.Add(new PackageManifestData.Dependency
                         {
                             name = d.name,
-                            version = ApplyVersionRange(d.version)
+                            // Normalize by zeroing ignored parts; UPM rejects npm-style ranges like ^ / ~ here.
+                            version = NormalizeVersion(d.version)
                         });
                     }
 

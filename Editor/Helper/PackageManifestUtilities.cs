@@ -134,6 +134,8 @@ namespace UnityEssentials
             dst.unity = src.unity;
             dst.unityRelease = src.unityRelease;
 
+            dst.resolutionStrategy = src.resolutionStrategy;
+
             dst.dependencies = src.dependencies ?? new Dictionary<string, string>();
             dst.keywords = src.keywords ?? new List<string>();
             dst.samples = src.samples ?? new List<PackageManifestData.Sample>();
