@@ -329,14 +329,26 @@ namespace UnityEssentials
 
             // --- Footer ---
             footer.SetFlex(direction: FlexDirection.Row, alignItems: Align.Center);
+            footer.style.flexWrap = Wrap.Wrap;
             footer.SetMargin(0, 0, 8, 0);
             footer.SetPadding(0, 0, 6, 6);
             footer.SetTopBorder(1);
 
+            var packageLabelRow = new VisualElement();
+            packageLabelRow.SetFlex(direction: FlexDirection.Row, alignItems: Align.Center);
+            packageLabelRow.style.flexBasis = new StyleLength(new Length(100, LengthUnit.Percent));
+            packageLabelRow.SetMargin(0, 0, 10, 0);
+
             packageLabel.SetFont(style: FontStyle.Italic);
-            packageLabel.SetFlex(grow: 1);
             packageLabel.SetOpacity(0.85f);
-            packageLabel.RegisterCallback<PointerDownEvent>(_ =>
+
+            var copyIcon = new Image { image = EditorGUIUtility.IconContent("d_UnityEditor.FindDependencies").image };
+            copyIcon.style.width = 14;
+            copyIcon.style.height = 14;
+            copyIcon.style.marginLeft = 4;
+            copyIcon.SetOpacity(0.6f);
+            copyIcon.tooltip = "Copy package name";
+            copyIcon.RegisterCallback<PointerDownEvent>(_ =>
             {
                 EditorGUIUtility.systemCopyBuffer = data.name;
             });
@@ -400,9 +412,18 @@ namespace UnityEssentials
                 }
             };
 
-            footer.Add(packageLabel);
-            footer.Add(revertBtn);
-            footer.Add(applyBtn);
+            var footerBtnRow = new VisualElement();
+            footerBtnRow.SetFlex(direction: FlexDirection.Row, justifyContent: Justify.FlexEnd);
+            footerBtnRow.style.flexBasis = new StyleLength(new Length(100, LengthUnit.Percent));
+
+            footerBtnRow.Add(revertBtn);
+            footerBtnRow.Add(applyBtn);
+
+            packageLabelRow.Add(packageLabel);
+            packageLabelRow.Add(copyIcon);
+
+            footer.Add(packageLabelRow);
+            footer.Add(footerBtnRow);
             root.Add(footer);
 
             UpdateFooter();

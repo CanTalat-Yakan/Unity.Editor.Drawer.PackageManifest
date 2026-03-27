@@ -1,3 +1,4 @@
+#pragma warning disable UAC1009
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
@@ -14,12 +15,8 @@ namespace UnityEssentials
         public string description;
         public string unity;
         public string unityRelease;
-
-        // Note: Unity's official `resolutionStrategy` currently applies to the *project* `Packages/manifest.json`.
-        // We keep it optional here so editor tooling can persist intent without writing npm-style semver ranges.
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public string resolutionStrategy;
-
         public Dictionary<string, string> dependencies = new();
         public List<string> keywords = new();
         public Author author = new Author();
